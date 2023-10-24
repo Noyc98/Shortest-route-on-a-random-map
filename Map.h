@@ -5,8 +5,10 @@
 class Map {
 private:
     std::vector<Polygon> polygons;
-    std::vector<Polygon> polygons;
+    double mapSize;
 public:
+
     void addPolygon(const Polygon& polygon);
+    double getmapSize();
     double calculateTotalArea() const;
 };
