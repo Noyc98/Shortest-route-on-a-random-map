@@ -4,10 +4,26 @@
 #include "Map.h"
 
 class ControlManager {
+private:
+	int mapSize, numPolygons;
+	std::vector<Polygon> polygons;
+	Point startPoint;
+	Point endPoint;
+
 
 public:
-	void readMapData(const std::string& filename);
+	ControlManager();
+	void readData(const std::string& filename);
+	void writeData();
 	
-	// ConvexHull //
-	std::vector<Point> convexHull(std::vector<Point> points);
+	// ConvexHull
+	void performeConvexHull();
+
+	// Line of sight
+	void findNeighbors(Point* currentStart, Point* currentEnd);
+	void findPointsNeighbors();
+	void all_to_all();
+	void start_to_all();
+	void end_to_all();
+	void start_to_end();
 };

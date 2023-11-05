@@ -7,8 +7,11 @@
 int main(int argc, const char* argv[]) 
 {
 
-    std::string filePath = "C:/Users/nulyc/projects/shortestPath/mapCreation/mapData.txt"; // File path
+    std::string filePath = argv[1];; // File path
 
     ControlManager manager;             
-    manager.readMapData(filePath);  // Read txt input.
+    manager.readData(filePath);  // Read txt input.
+    manager.performeConvexHull();
+    manager.writeData();
+    manager.findPointsNeighbors();
 }

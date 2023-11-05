@@ -11,4 +11,5 @@ public:
 	Polygon(const std::vector<Point>& points, int number);
 	int getPolygonNumber() const;
 	double calculateArea() const;
+	std::vector<Point>& getPolygonsPointsArray();
 };

@@ -19,3 +19,8 @@ double Polygon::calculateArea() const {
 
     return std::abs(area) / 2.0;
 }
+
+std::vector<Point>& Polygon::getPolygonsPointsArray()
+{
+    return (this->points);
+}
