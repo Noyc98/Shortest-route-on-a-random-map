@@ -1,4 +1,3 @@
-#pragma once
 #include "ControlManager.h"
 #include <iostream>
 #include <fstream>
@@ -11,7 +10,8 @@ int main(int argc, const char* argv[])
 
     ControlManager manager;             
     manager.readData(filePath);  // Read txt input.
-    manager.performeConvexHull();
+    manager.performeConvexHull(); // Convex hull
+    manager.findPointsNeighbors(); // Line of sight
     manager.writeData();
-    manager.findPointsNeighbors();
+    manager.writeNeigbors();
 }

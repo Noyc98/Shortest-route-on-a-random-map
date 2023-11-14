@@ -62,8 +62,8 @@ void ControlManager:: readData(const std::string& filename)
         Polygon polygon(polygonPoints, polygonNumber);
         polygons.push_back(polygon);
     }
-    //this->startPoint = {0.0, 0.0};
-    //this->endPoint = {(double)mapSize, (double)mapSize};
+    this->startPoint = {0.0, 0.0};
+    this->endPoint = {(double)mapSize, (double)mapSize};
 
     file.close();
 
@@ -82,13 +82,20 @@ bool customComparator(const Point& pivot, const Point& p1, const Point& p2) {
     return angle1 < angle2;
 }
 
-// Implementation of the convexHull function using Graham Scan
-void convexHull(std::vector<Point>& points) 
+void convexHull(std::vector<Point>& points)
 {
-    // Function to compare two points for sorting
-    auto comparePoints = [](const Point& p1, const Point& p2) 
+    // Check if there are less than three points
+    if (points.size() < 3)
     {
-        if (p1.getY() == p2.getY()) 
+        // Handle cases with less than three points
+        // Convex hull is the input points themselves
+        return;
+    }
+
+    // Function to compare two points for sorting
+    auto comparePoints = [](const Point& p1, const Point& p2)
+    {
+        if (p1.getY() == p2.getY())
         {
             return p1.getX() < p2.getX();
         }
@@ -101,12 +108,11 @@ void convexHull(std::vector<Point>& points)
     // Find the pivot point (the one with the lowest y-coordinate)
     Point pivot = points[0];
 
-
     // Sort the remaining points based on polar angle from the pivot using the custom comparator
-    std::sort(points.begin() + 1, points.end(), [pivot](const Point& p1, const Point& p2) 
-    {
-        return customComparator(pivot, p1, p2);
-    });
+    std::sort(points.begin() + 1, points.end(), [pivot](const Point& p1, const Point& p2)
+        {
+            return customComparator(pivot, p1, p2);
+        });
 
     // Initialize the convex hull with the first two points
     std::stack<Point> hull;
@@ -114,11 +120,11 @@ void convexHull(std::vector<Point>& points)
     hull.push(points[1]);
 
     // Build the convex hull
-    for (size_t i = 2; i < points.size(); i++) 
+    for (size_t i = 2; i < points.size(); i++)
     {
         Point top = hull.top();
         hull.pop();
-        while (!hull.empty() && Point::crossProduct(hull.top(), top, points[i]) <= 0) 
+        while (!hull.empty() && Point::crossProduct(hull.top(), top, points[i]) <= 0)
         {
             top = hull.top();
             hull.pop();
@@ -127,16 +133,16 @@ void convexHull(std::vector<Point>& points)
         hull.push(points[i]);
     }
 
-    // Convert the stack to a vector for the final convex hull points
-    points.clear();
-    while (!hull.empty()) 
+    // Update the original points array with the computed convex hull
+    std::vector<Point> convexHullPoints;
+    while (!hull.empty())
     {
-        points.push_back(hull.top());
+        convexHullPoints.push_back(hull.top());
         hull.pop();
     }
 
-    std::reverse(points.begin(), points.end());
-     points.shrink_to_fit();
+    std::reverse(convexHullPoints.begin(), convexHullPoints.end());
+    points = convexHullPoints;
 }
 
 void ControlManager::performeConvexHull()
@@ -189,10 +195,15 @@ void ControlManager::findNeighbors(Point* currentStart, Point* currentEnd)
 
     for (int checkPolygon = 0; checkPolygon < numPolygons; checkPolygon++)
     {
-        for (int crossPoint = 0; crossPoint < this->polygons[checkPolygon].getPolygonsPointsArray().size() - 1; crossPoint++)
+        int size = this->polygons[checkPolygon].getPolygonsPointsArray().size();
+        for (int crossPoint = 0; crossPoint < size; crossPoint++)
         {
-            Point* point1 = &(polygons[checkPolygon].getPolygonsPointsArray()[crossPoint]);
-            Point* point2 = &(polygons[checkPolygon].getPolygonsPointsArray()[++crossPoint]);
+            Point* point1 = &(polygons[checkPolygon].getPolygonsPointsArray()[crossPoint % size]);
+            Point* point2 = &(polygons[checkPolygon].getPolygonsPointsArray()[(crossPoint+1) % size]);
+            if ((point1 == currentEnd) || (point2 == currentEnd) || (point1 == currentStart) || (point2 == currentStart))
+            {
+                continue;
+            }
 
             // check if 2 lines are not crossing
             if ((areLinesCrossing(*currentStart, *currentEnd, *point1, *point2)))
@@ -211,27 +222,36 @@ void ControlManager::findNeighbors(Point* currentStart, Point* currentEnd)
 
 void ControlManager::findPointsNeighbors()
 {
-    all_to_all();
-    start_to_all();
-    end_to_all();
-    start_to_end();
+    allToAll();
+    startPointToAll();
+    endPointToAll();
+    startPointToEndP();
 }
 
 // all points for all points
-void ControlManager::all_to_all()
+void ControlManager::allToAll()
 {
     for (int mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
     {
         for (int point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
         {
             Point* currentStart = &(polygons[mainPolygon].getPolygonsPointsArray()[point]);
-            for (int mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
+            for (int secPolygon = 0; secPolygon < numPolygons; secPolygon++)
             {
-                for (int point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
+                int size = (this->polygons[secPolygon].getPolygonsPointsArray()).size();
+                for (int point2 = 0; point2 < size; point2++)
                 {
-                    Point* currentEnd = &(polygons[mainPolygon].getPolygonsPointsArray()[point]);
-                
-                    findNeighbors(currentStart, currentEnd);
+                    Point* currentEnd = &(polygons[secPolygon].getPolygonsPointsArray()[point2]);
+                    if (mainPolygon != secPolygon)
+                    {
+                        findNeighbors(currentStart, currentEnd);
+                    }
+                    else {
+                        // add neighbors from right and left
+                        currentStart->setNeighbors(&(polygons[mainPolygon].getPolygonsPointsArray()[(point + 1) % size]));
+                        currentStart->setNeighbors(&(polygons[mainPolygon].getPolygonsPointsArray()[(point - 1 + size) % size]));
+                    }
+                    
                 }
             }
         }
@@ -239,7 +259,7 @@ void ControlManager::all_to_all()
 }
 
 // start to all
-void ControlManager::start_to_all()
+void ControlManager::startPointToAll()
 {
     Point* currentStart = &startPoint;
 
@@ -252,11 +272,10 @@ void ControlManager::start_to_all()
             findNeighbors(currentStart, currentEnd);
         }
     }
-  
 }
 
 // end  to all
-void ControlManager::end_to_all()
+void ControlManager::endPointToAll()
 {
     Point* currentStart = &endPoint;
 
@@ -274,7 +293,7 @@ void ControlManager::end_to_all()
 }
 
 // start  to end
-void ControlManager::start_to_end()
+void ControlManager::startPointToEndP()
 {
     Point* currentStart = &startPoint;
 
@@ -282,3 +301,45 @@ void ControlManager::start_to_end()
 
     findNeighbors(currentStart, currentEnd);
 }
+
+void ControlManager::outNeighborsArray(const std::vector<Point*>& neighborsArray, std::ofstream& outFile)
+{
+    outFile << neighborsArray.size() << "\n";
+    // Iterate over the neighborsArray and write each Point to the file
+    for (const Point* neighbor : neighborsArray) {
+        outFile << neighbor->getX() << ", " << neighbor->getY() << "\n";
+    }
+}
+
+// Write neighbors array to txt file
+void ControlManager::writeNeigbors()
+{
+    // Create and open a text file
+    std::ofstream outFile("neighborsFile.txt");
+
+    // Start point
+    std::vector<Point*> neighborsArray = this->startPoint.getNeighbors();
+    outNeighborsArray(neighborsArray, outFile);
+   
+    // End point
+    neighborsArray = this->endPoint.getNeighbors();
+    outNeighborsArray(neighborsArray, outFile);
+
+    for (int polygonNumber = 0; polygonNumber < numPolygons; polygonNumber++)
+    {
+        int pointsNumber = polygons[polygonNumber].getPolygonsPointsArray().size();
+        outFile << polygonNumber << "\n" << pointsNumber << "\n";
+
+        for (int j = 0; j < pointsNumber; j++)
+        {
+            neighborsArray = polygons[polygonNumber].getPolygonsPointsArray()[j].getNeighbors();
+            outNeighborsArray(neighborsArray, outFile);
+        }
+
+        outFile << "\n";
+    }
+
+    outFile.close();
+}
+
+

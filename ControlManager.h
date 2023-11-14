@@ -22,8 +22,11 @@ public:
 	// Line of sight
 	void findNeighbors(Point* currentStart, Point* currentEnd);
 	void findPointsNeighbors();
-	void all_to_all();
-	void start_to_all();
-	void end_to_all();
-	void start_to_end();
+	void allToAll();
+	void startPointToAll();
+	void endPointToAll();
+	void startPointToEndP();
+	void writeNeigbors();
+	void outNeighborsArray(const std::vector<Point*>& neighborsArray, std::ofstream& outFile);
+
 };
