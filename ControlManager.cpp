@@ -185,22 +185,25 @@ bool areLinesCrossing(const Point& p1, const Point& p2, const Point& p3, const P
         y_intersection <= std::max(p3.getY(), p4.getY()));
 }
 
-void ControlManager::findNeighbors(Point* currentStart, Point* currentEnd)
+void ControlManager::findNeighbors(Point* currentStart, Point* currentEnd) 
 {
-    if (currentStart == currentEnd)
-    {
+    if (currentStart == currentEnd) {
         return;
     }
     int counterCrossing = 0;
 
-    for (int checkPolygon = 0; checkPolygon < numPolygons; checkPolygon++)
+    for (int checkPolygon = 0; checkPolygon < numPolygons; checkPolygon++) 
     {
-        int size = this->polygons[checkPolygon].getPolygonsPointsArray().size();
-        for (int crossPoint = 0; crossPoint < size; crossPoint++)
+        auto& pointsArray = polygons[checkPolygon].getPolygonsPointsArray();
+        int size = pointsArray.size();
+
+        for (int crossPoint = 0; crossPoint < size; crossPoint++) 
         {
-            Point* point1 = &(polygons[checkPolygon].getPolygonsPointsArray()[crossPoint % size]);
-            Point* point2 = &(polygons[checkPolygon].getPolygonsPointsArray()[(crossPoint+1) % size]);
-            if ((point1 == currentEnd) || (point2 == currentEnd) || (point1 == currentStart) || (point2 == currentStart))
+            Point* point1 = &pointsArray[crossPoint];
+            Point* point2 = &pointsArray[(crossPoint + 1) % size];
+
+            // Skip the current points
+            if (point1 == currentEnd || point2 == currentStart || point2 == currentEnd || point1 == currentStart)
             {
                 continue;
             }
@@ -213,12 +216,15 @@ void ControlManager::findNeighbors(Point* currentStart, Point* currentEnd)
         }
     }
 
-    // If we went over all poligons and no line is crossing
+    // If we went over all polygons and no line is crossing
+    // Calculate and store the distance between currentStart and currentEnd
     if (counterCrossing == 0)
     {
-        currentStart->setNeighbors(currentEnd);
+        double distance = currentStart->calculateDistance(*currentEnd);
+        currentStart->setNeighbors(currentEnd, distance);
     }
 }
+
 
 void ControlManager::findPointsNeighbors()
 {
@@ -227,45 +233,55 @@ void ControlManager::findPointsNeighbors()
     endPointToAll();
     startPointToEndP();
 }
-
-// all points for all points
 void ControlManager::allToAll()
 {
     for (int mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
     {
-        for (int point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
+        auto& mainPoints = polygons[mainPolygon].getPolygonsPointsArray();
+        int mainSize = mainPoints.size();
+
+        for (int point = 0; point < mainSize; point++)
         {
-            Point* currentStart = &(polygons[mainPolygon].getPolygonsPointsArray()[point]);
+            Point* currentStart = &mainPoints[point];
+
             for (int secPolygon = 0; secPolygon < numPolygons; secPolygon++)
             {
-                int size = (this->polygons[secPolygon].getPolygonsPointsArray()).size();
-                for (int point2 = 0; point2 < size; point2++)
+                auto& secPoints = polygons[secPolygon].getPolygonsPointsArray();
+                int secSize = secPoints.size();
+
+                for (int point2 = 0; point2 < secSize; point2++)
                 {
-                    Point* currentEnd = &(polygons[secPolygon].getPolygonsPointsArray()[point2]);
+                    Point* currentEnd = &secPoints[point2];
+
                     if (mainPolygon != secPolygon)
                     {
+                        // Use the setNeighbors function to add/update neighbors
                         findNeighbors(currentStart, currentEnd);
                     }
-                    else {
-                        // add neighbors from right and left
-                        currentStart->setNeighbors(&(polygons[mainPolygon].getPolygonsPointsArray()[(point + 1) % size]));
-                        currentStart->setNeighbors(&(polygons[mainPolygon].getPolygonsPointsArray()[(point - 1 + size) % size]));
+                    else if (point != point2)
+                    {
+                        // add neighbors from right and left, if they are not the same point
+                        currentStart->setNeighbors(&mainPoints[(point + 1) % mainSize],
+                            currentStart->calculateDistance(mainPoints[(point + 1) % mainSize]));
+
+                        currentStart->setNeighbors(&mainPoints[(point - 1 + mainSize) % mainSize],
+                            currentStart->calculateDistance(mainPoints[(point - 1 + mainSize) % mainSize]));
                     }
-                    
                 }
             }
         }
     }
 }
 
+
 // start to all
 void ControlManager::startPointToAll()
 {
     Point* currentStart = &startPoint;
 
-    for (int mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
+    for (size_t mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
     {
-        for (int point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
+        for (size_t point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
         {
             Point* currentEnd = &(polygons[mainPolygon].getPolygonsPointsArray()[point]);
 
@@ -279,9 +295,9 @@ void ControlManager::endPointToAll()
 {
     Point* currentStart = &endPoint;
 
-    for (int mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
+    for (size_t mainPolygon = 0; mainPolygon < numPolygons; mainPolygon++)
     {
-        for (int point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
+        for (size_t point = 0; point < (this->polygons[mainPolygon].getPolygonsPointsArray()).size(); point++)
         {
             Point* currentEnd = &(polygons[mainPolygon].getPolygonsPointsArray()[point]);
 
@@ -302,38 +318,32 @@ void ControlManager::startPointToEndP()
     findNeighbors(currentStart, currentEnd);
 }
 
-void ControlManager::outNeighborsArray(const std::vector<Point*>& neighborsArray, std::ofstream& outFile)
-{
-    outFile << neighborsArray.size() << "\n";
-    // Iterate over the neighborsArray and write each Point to the file
-    for (const Point* neighbor : neighborsArray) {
-        outFile << neighbor->getX() << ", " << neighbor->getY() << "\n";
-    }
-}
+
 
 // Write neighbors array to txt file
-void ControlManager::writeNeigbors()
+void ControlManager::writeNeighbors()
 {
     // Create and open a text file
     std::ofstream outFile("neighborsFile.txt");
 
     // Start point
-    std::vector<Point*> neighborsArray = this->startPoint.getNeighbors();
-    outNeighborsArray(neighborsArray, outFile);
-   
+    const std::vector<std::pair<Point*, double>>& startNeighbors = this->startPoint.getNeighbors();
+    outNeighborsArrayWithDistances(startNeighbors, outFile);
+
     // End point
-    neighborsArray = this->endPoint.getNeighbors();
-    outNeighborsArray(neighborsArray, outFile);
+    const std::vector<std::pair<Point*, double>>& endNeighbors = this->endPoint.getNeighbors();
+    outNeighborsArrayWithDistances(endNeighbors, outFile);
 
     for (int polygonNumber = 0; polygonNumber < numPolygons; polygonNumber++)
     {
-        int pointsNumber = polygons[polygonNumber].getPolygonsPointsArray().size();
+        const auto& polygonPoints = polygons[polygonNumber].getPolygonsPointsArray();
+        int pointsNumber = polygonPoints.size();
         outFile << polygonNumber << "\n" << pointsNumber << "\n";
 
         for (int j = 0; j < pointsNumber; j++)
         {
-            neighborsArray = polygons[polygonNumber].getPolygonsPointsArray()[j].getNeighbors();
-            outNeighborsArray(neighborsArray, outFile);
+            const std::vector<std::pair<Point*, double>>& pointNeighbors = polygonPoints[j].getNeighbors();
+            outNeighborsArrayWithDistances(pointNeighbors, outFile);
         }
 
         outFile << "\n";
@@ -342,4 +352,14 @@ void ControlManager::writeNeigbors()
     outFile.close();
 }
 
+// Write neighbors array with distances to the file
+void ControlManager::outNeighborsArrayWithDistances(const std::vector<std::pair<Point*, double>>& neighborsArray, std::ofstream& outFile)
+{
+    outFile << neighborsArray.size() << "\n";
+    // Iterate over the neighborsArray and write each Point and distance to the file
+    for (const auto& neighbor : neighborsArray)
+    {
+        outFile << neighbor.first->getX() << ", " << neighbor.first->getY() << ", " << neighbor.second << "\n";
+    }
+}
 

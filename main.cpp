@@ -13,5 +13,6 @@ int main(int argc, const char* argv[])
     manager.performeConvexHull(); // Convex hull
     manager.findPointsNeighbors(); // Line of sight
     manager.writeData();
-    manager.writeNeigbors();
+    manager.writeNeighbors();
+
 }

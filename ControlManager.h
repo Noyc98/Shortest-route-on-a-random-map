@@ -9,6 +9,12 @@ private:
 	std::vector<Polygon> polygons;
 	Point startPoint;
 	Point endPoint;
+	void allToAll();
+	void startPointToAll();
+	void endPointToAll();
+	void startPointToEndP();
+	void findNeighbors(Point* currentStart, Point* currentEnd);
+	void outNeighborsArrayWithDistances(const std::vector<std::pair<Point*, double>>& neighborsArray, std::ofstream& outFile);
 
 
 public:
@@ -20,13 +26,9 @@ public:
 	void performeConvexHull();
 
 	// Line of sight
-	void findNeighbors(Point* currentStart, Point* currentEnd);
 	void findPointsNeighbors();
-	void allToAll();
-	void startPointToAll();
-	void endPointToAll();
-	void startPointToEndP();
-	void writeNeigbors();
-	void outNeighborsArray(const std::vector<Point*>& neighborsArray, std::ofstream& outFile);
+	void writeNeighbors();
+
+	// Shortest route
 
 };
